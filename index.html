@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gatekeeper Gym</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+    :root { --bg:#16191C; --surface:#1E2327; --surface-2:#23282D; --ink:#E7E4DB; --muted:#9BA2A7; --line:#343B41; --accent:#C9A84C; --accent-strong:#DDBE66; --good:#6FBF97; --good-bg:#22322B; --warn:#D6906B; --warn-bg:#362823; --focus:#7FA8CE; }
+    * { box-sizing: border-box; }
+    body { background:var(--bg); color:var(--ink); font-family:"IBM Plex Sans",system-ui,sans-serif; font-size:15px; line-height:1.5; margin:0; }
+    .wrap { max-width:900px; margin:0 auto; padding:0 16px 60px; }
+    header { padding:30px 0 10px; border-bottom:2px solid var(--ink); margin-bottom:14px; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+    h1 { font-family:"Spectral",Georgia,serif; font-size:30px; margin:0; }
+    .sub { color:var(--muted); font-size:13px; }
+    h2 { font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent-strong); margin:22px 0 8px; }
+    .panel { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin:12px 0; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px 14px; }
+    label { display:block; font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+    input[type=password], input[type=text], select { width:100%; background:var(--surface-2); color:var(--ink); border:1px solid var(--line); border-radius:5px; padding:8px 10px; font:inherit; font-size:13.5px; }
+    input:focus-visible, select:focus-visible, button:focus-visible { outline:2px solid var(--focus); outline-offset:1px; }
+    button { font:inherit; cursor:pointer; border-radius:6px; border:1px solid var(--line); background:var(--surface-2); color:var(--ink); padding:9px 16px; }
+    button:hover { border-color:var(--accent); }
+    button.primary { background:var(--accent); color:#16191C; font-weight:600; border-color:var(--accent); }
+    button:disabled { opacity:.45; cursor:default; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+    .hint { font-size:12px; color:var(--muted); margin-top:8px; }
+    .hint code { font-family:"IBM Plex Mono",monospace; background:var(--surface-2); padding:1px 5px; border-radius:3px; }
+    #talkBtn { font-size:17px; padding:14px 30px; border-radius:999px; }
+    #talkBtn.rec { background:var(--warn); border-color:var(--warn); color:#16191C; font-weight:600; }
+    .status { font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted); min-height:18px; }
+    #interim { color:var(--accent-strong); font-style:italic; min-height:20px; }
+    #log { display:flex; flex-direction:column; gap:10px; margin:14px 0; }
+    .turn { max-width:82%; padding:10px 14px; border-radius:10px; border:1px solid var(--line); }
+    .turn.you { align-self:flex-end; background:var(--surface-2); }
+    .turn.gk { align-self:flex-start; background:var(--surface); border-left:3px solid var(--accent); }
+    .turn .who { font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:3px; }
+    .turn .mx { font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--muted); margin-top:6px; }
+    .turn audio { width:100%; height:28px; margin-top:6px; }
+    .banner { padding:12px 16px; border-radius:8px; font-weight:600; margin:10px 0; display:none; }
+    .banner.win { background:var(--good-bg); color:var(--good); border:1px solid var(--good); }
+    .banner.lose { background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn); }
+    #coachOut { white-space:pre-wrap; font-size:14px; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--good); border-radius:8px; padding:14px 16px; display:none; }
+    details summary { cursor:pointer; color:var(--muted); font-size:13px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>Gatekeeper Gym</h1>
+      <span class="sub">speak your way past the front desk. your voice in, her voice out, your tone measured</span>span>
+      </header>
+    <div class="panel">
+    <h2>Setup (stored locally in this browser only)</h2>
+    <div class="grid">
+    <div><label>Anthropic API key</label><input type="password" id="akey" placeholder="sk-ant-..."></div>
+    <div><label>ElevenLabs API key</label><input type="password" id="ekey" placeholder="xi-..."></div>
+    <div><label>Gatekeeper voice</label><select id="voice"><option value="">(click Load voices)</option>option></select>select></div>
+    <div><label>Lobby</label><select id="scenario"></select>select></div>
+    <div><label>Difficulty</label>
+    <select id="diff">
+    <option value="2">D2 - bored professional</option>option>
+    <option value="3" selected>D3 - procedural wall ("you need a meeting booked")</option>option>
+    <option value="4">D4 - hostile policy-citer</option>option>
+    <option value="5">D5 - worst case: no patience, will end it</option>option>
+    </select>select></div>
+    <div><label>Claude model</label><input type="text" id="model" value="claude-sonnet-5"></div>
+    </div>
+    <div class="row">
+    <button id="loadVoices">Load voices</button>button>
+    <button id="saveKeys">Save keys</button>button>
+    <span class="status" id="setupStatus"></span>span>
+    </div>
+    <p class="hint">Needs Chrome (mic + speech recognition). Hosted on GitHub Pages the mic just works; as a local file, if the mic is blocked, serve it with <code>python3 -m http.server</code> and open via localhost. Keys never leave your browser; calls go directly to Anthropic and ElevenLabs. If the ElevenLabs key is empty or fails, the robot browser voice is used instead.</p>p>
+    </div>
+    <div class="panel">
+    <h2>The door</h2>
+    <div class="row">
+    <button id="startBtn" class="primary">Start session</button>button>
+    <button id="talkBtn" disabled>Click to speak</button>button>
+    <button id="endBtn" disabled>End + coach me</button>button>
+    <span class="status" id="status">idle</span>span>
+    </div>
+    <div id="interim"></div>
+    <div class="banner win" id="winBanner">ROUTED. She gave you a specific person. That is the win condition.</div>
+    <div class="banner lose" id="loseBanner">She ended it. Hit "End + coach me" and find the turn where you lost her.</div>
+    <div id="log"></div>
+    <div id="coachOut"></div>
+    </div>
+    <details><summary>What gets measured from your voice</summary>
+    <p class="hint">Each of your turns is recorded (replayable below your bubble, so you hear your own tone) and measured locally: speaking rate (wpm), filler words, long pauses, and loudness steadiness. Those numbers go to the coach with the transcript. Nothing is uploaded anywhere except the text to Claude and the gatekeeper's lines to ElevenLabs.</p>p>
+    </details>
+    </div>
+  <script>
+    const SCENARIOS = [
+      ["Wartsila, Salmisaari HQ", "bearing or tribology specialists in Marine Power R&D or Services"],
+      ["ABB Marine & Ports, Vuosaari", "Azipod service or reliability engineering"],
+      ["ABB Motors & Generators, Pitajanmaki", "excitation / collector system engineers or service product managers"],
+      ["Fortum HQ, Keilaniemi", "hydro asset management / plant engineering"],
+      ["Metso HQ, Espoo", "wear parts or grinding business line R&D"],
+      ["Konecranes, Hyvinkaa", "service engineering / reliability, port solutions"],
+      ["Kempower, Lahti", "connector / charging hardware engineering or field quality"],
+      ["Valmet HQ, Espoo", "services / consumables product management"],
+      ["Kalmar, Helsinki", "spreader or service engineering"],
+      ["VR FleetCare, Helsinki", "electrical machines workshop leads"],
+      ["Steerprop office, Vantaa", "propulsor engineering / R&D"],
+      ["Sulzer office, Vantaa", "service center engineering, hydraulics/materials"],
+      ["Normet HQ office, Helsinki", "concrete spraying product line R&D or parts & services"],
+      ["Luvata office, Espoo", "welding products R&D / applications engineering"],
+      ["Ensto, Porvoo", "network accessories product engineering or quality"]
+      ];
+    const sSel = document.getElementById('scenario');
+    SCENARIOS.forEach((s,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=s[0]; sSel.appendChild(o); });
+    let turns = [];
+    let sessionOn = false;
+    const $ = id => document.getElementById(id);
+    try {
+      $('akey').value = localStorage.getItem('gk_akey')||'';
+      $('ekey').value = localStorage.getItem('gk_ekey')||'';
+      const v = localStorage.getItem('gk_voice');
+      if(v){ const o=document.createElement('option'); o.value=v.split('|')[0]; o.textContent=v.split('|')[1]||'saved voice'; o.selected=true; $('voice').appendChild(o); }
+    } catch(e){}
+    $('saveKeys').onclick = ()=>{ try{
+      localStorage.setItem('gk_akey', $('akey').value.trim());
+      localStorage.setItem('gk_ekey', $('ekey').value.trim());
+      const sel=$('voice'); if(sel.value) localStorage.setItem('gk_voice', sel.value+'|'+sel.options[sel.selectedIndex].textContent);
+      $('setupStatus').textContent='saved';
+    }catch(e){ $('setupStatus').textContent='could not save (private window?)'; } };
+    $('loadVoices').onclick = async ()=>{
+      const k = $('ekey').value.trim();
+      if(!k){ $('setupStatus').textContent='enter ElevenLabs key first'; return; }
+      $('setupStatus').textContent='loading voices...';
+      try {
+        const r = await fetch('https://api.elevenlabs.io/v1/voices', {headers:{'xi-api-key':k}});
+        const j = await r.json();
+        const sel = $('voice'); sel.innerHTML='';
+        (j.voices||[]).forEach(v=>{ const o=document.createElement('option'); o.value=v.voice_id; o.textContent=v.name; sel.appendChild(o); });
+        $('setupStatus').textContent=(j.voices||[]).length+' voices loaded';
+      } catch(e){ $('setupStatus').textContent='voice load failed: '+e.message; }
+    };
+    async function speak(text){
+      const k = $('ekey').value.trim(), vid = $('voice').value;
+      if(k && vid){
+        try {
+          const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/'+vid+'?output_format=mp3_44100_64', {
+            method:'POST',
+            headers:{'xi-api-key':k, 'Content-Type':'application/json'},
+            body: JSON.stringify({ text, model_id:'eleven_flash_v2_5', voice_settings:{stability:0.45, similarity_boost:0.8, style:0.35} })
+          });
+          if(!r.ok) throw new Error('TTS '+r.status);
+          const blob = await r.blob();
+          const a = new Audio(URL.createObjectURL(blob));
+          await a.play();
+          return;
+        } catch(e){ console.warn('ElevenLabs failed, falling back', e); }
+      }
+      const u = new SpeechSynthesisUtterance(text); u.lang='en-GB'; u.rate=1.05; speechSynthesis.speak(u);
+    }
+  </script>
+    <script>
+      function systemPrompt(){
+        const sc = SCENARIOS[+sSel.value]; const d = +$('diff').value;
+        const base = `You are the receptionist at the front desk of ${sc[0]} in Finland. You role-play ONLY the receptionist, in spoken English, replying in 1-2 short natural sentences per turn, like real speech. Never break character, never narrate, never use stage directions.
+
+        Reality rules:
+        - Company policy, which you state early and believe in: visitors must have a meeting booked in advance to go past the lobby. "You need to have a meeting planned" is your default wall.
+        - You are busy: phone, couriers, employees badging in.
+        - You do NOT know the org chart in detail. You know departments exist and can look up a name in the directory ONLY if the visitor asks for a sufficiently specific role or topic and has given you a credible, concise reason.
+        - Somewhere in this building are people like: ${sc[1]}. You would only think of them if the visitor's ask maps clearly onto that.
+        - What can move you, gradually and only if earned: a visitor who (a) says who they are and why in one breath, (b) asks for a specific role rather than "someone in charge", (c) stays calm and polite under refusal, (d) offers something reasonable like leaving a one-page note for a NAMED role, or asks you to check the directory for the right title. You never reward pushiness, vagueness, flattery, or rambling.
+        - Vague or salesy visitors get the generic wall: "you can email info@..." or "book a meeting and come back."
+
+        WIN CONDITION (give it only when genuinely earned, after real resistance): you name a specific person or direct extension, place an internal call to a specific person, or commit to handing their note to a specific named role today. When and only when you do that, append the exact token <<ROUTED>> at the very end of your reply.
+        LOSS: if the visitor is pushy, wastes your time repeatedly, or the conversation exceeds your patience, end it firmly ("I have to ask you to leave it here.") and append <<ENDED>>.`;
+        const diffs = {
+          2:`Difficulty: bored professional. Minimal effort, but not unkind. You yield the win after moderate persistence and specificity (typically 4-6 good visitor turns).`,
+          3:`Difficulty: procedural wall. You lean hard on the meeting-required policy and GDPR ("we don't give out names"). You yield only to a visitor who is specific, calm, and gives you an easy action (directory lookup for a precise role, or a note to a named function). Typically 6-8 strong turns, never earlier than 4.`,
+          4:`Difficulty: hostile policy-citer. You open with suspicion, mention the no-solicitation policy, threaten to call security if pressed twice. A win requires near-flawless specificity and composure, minimum 6 strong turns. One pushy or rambling turn and you harden for the next 2 turns.`,
+          5:`Difficulty: worst case. Two-sentence attention span, you interrupt, you multitask mid-reply. After any 4 weak or repetitive visitor turns total, end the conversation with <<ENDED>>. A win requires exceptional performance.`
+        };
+        return base + "\n\n" + diffs[d];
+      }
+      const COACH = `You are a blunt, expert cold-outreach and presence coach. You get a transcript of a lobby role-play (visitor trying to get past a receptionist) plus per-turn voice metrics measured from the visitor's actual speech: wpm (words/min), fillers (count), pauses (silences >0.7s), loudness_cv (loudness variability, ~0.2-0.5 is lively, <0.15 is flat/mumbling, >0.7 erratic), dur_s (turn length seconds).
+      Give:
+      1. VERDICT: one sentence, did they earn the route and why/why not.
+      2. THE TURN THAT DECIDED IT: quote the exact visitor line where it was won or lost, and write the stronger line verbatim.
+      3. SCORES 1-5 with one-line reasons: first-5-seconds clarity, specificity of ask, calm under refusal, converting a no into a name, exit quality.
+      4. VOICE: what the metrics say about delivery (rate, fillers, flatness), max 3 sentences, reference actual numbers.
+      5. ONE DRILL for the next round, one sentence.
+      Be direct, no praise padding, under 300 words.`;
+      async function claude(system, messages, maxTok){
+        const r = await fetch('https://api.anthropic.com/v1/messages', {
+          method:'POST',
+          headers:{
+            'x-api-key': $('akey').value.trim(),
+            'anthropic-version':'2023-06-01',
+            'anthropic-dangerous-direct-browser-access':'true',
+            'content-type':'application/json'
+          },
+          body: JSON.stringify({ model: $('model').value.trim(), max_tokens: maxTok||220, system, messages })
+        });
+        if(!r.ok){ throw new Error('Claude API '+r.status+': '+await r.text()); }
+        const j = await r.json();
+        return j.content.map(c=>c.text||'').join('');
+      }
+      let rec=null, mediaRec=null, chunks=[], rmsSamples=[], rmsTimer=null, tStart=0, finalText='';
+      async function startTalk(){
+        finalText=''; chunks=[]; rmsSamples=[];
+        const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+        if(!SR){ $('status').textContent='SpeechRecognition unsupported: use Chrome'; return; }
+        let stream;
+        try { stream = await navigator.mediaDevices.getUserMedia({audio:true}); }
+        catch(e){ $('status').textContent='mic blocked: use the hosted page or localhost'; return; }
+        mediaRec = new MediaRecorder(stream);
+        mediaRec.ondataavailable = e=>chunks.push(e.data);
+        mediaRec.start();
+        const ctx = new (window.AudioContext||window.webkitAudioContext)();
+        const src = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser(); analyser.fftSize=2048; src.connect(analyser);
+        const buf = new Float32Array(analyser.fftSize);
+        rmsTimer = setInterval(()=>{ analyser.getFloatTimeDomainData(buf);
+                                    let s=0; for(let i=0;i<buf.length;i++) s+=buf[i]*buf[i];
+                                    rmsSamples.push(Math.sqrt(s/buf.length)); }, 100);
+        rec = new SR(); rec.lang='en-US'; rec.continuous=true; rec.interimResults=true;
+        rec.onresult = e=>{ let interim='';
+                           for(let i=e.resultIndex;i<e.results.length;i++){
+                             if(e.results[i].isFinal) finalText += e.results[i][0].transcript + ' ';
+                             else interim += e.results[i][0].transcript; }
+                           $('interim').textContent = finalText + interim; };
+        rec.onerror = e=>{ $('status').textContent='speech error: '+e.error; };
+        rec.start(); tStart = Date.now();
+        $('talkBtn').textContent='Click when done'; $('talkBtn').classList.add('rec');
+        $('status').textContent='listening...';
+      }
+      function computeMetrics(text, durS){
+        const words = text.trim().split(/\s+/).filter(Boolean).length;
+        const wpm = durS>0 ? Math.round(words/(durS/60)) : 0;
+        const fillers = (text.toLowerCase().match(/\b(um+|uh+|erm|like|you know|sort of|kind of|basically|actually)\b/g)||[]).length;
+        const speech = rmsSamples.filter(v=>v>0.01);
+        const mean = speech.length? speech.reduce((a,b)=>a+b,0)/speech.length : 0;
+        const sd = speech.length? Math.sqrt(speech.reduce((a,b)=>a+(b-mean)*(b-mean),0)/speech.length) : 0;
+        const cv = mean>0 ? +(sd/mean).toFixed(2) : 0;
+        let pauses=0, run=0;
+        rmsSamples.forEach(v=>{ if(v<=0.01){run++;} else { if(run>=7) pauses++; run=0; } });
+        return { wpm, fillers, pauses, loudness_cv:cv, dur_s:+durS.toFixed(1) };
+      }
+      async function stopTalk(){
+        $('talkBtn').classList.remove('rec'); $('talkBtn').textContent='Click to speak';
+        $('status').textContent='processing...';
+        try{ rec && rec.stop(); }catch(e){}
+        clearInterval(rmsTimer);
+        const durS = (Date.now()-tStart)/1000;
+        await new Promise(res=>{ if(!mediaRec||mediaRec.state==='inactive') return res();
+                                mediaRec.onstop=res; mediaRec.stop(); });
+        mediaRec && mediaRec.stream.getTracks().forEach(t=>t.stop());
+        await new Promise(r=>setTimeout(r,350));
+        const text = (finalText || $('interim').textContent || '').trim();
+        $('interim').textContent='';
+        if(!text){ $('status').textContent='heard nothing, try again'; return; }
+        const metrics = computeMetrics(text, durS);
+        const audioUrl = chunks.length? URL.createObjectURL(new Blob(chunks,{type:'audio/webm'})) : null;
+        addTurn('you', text, metrics, audioUrl);
+        turns.push({role:'user', content:text, _mx:metrics});
+        await gatekeeperReply();
+      }
+      function addTurn(who, text, mx, audioUrl){
+        const d = document.createElement('div'); d.className='turn '+(who==='you'?'you':'gk');
+        d.innerHTML = '<div class="who">'+(who==='you'?'YOU':'RECEPTIONIST')+'</div><div>'+text.replace(/</g,'&lt;')+'</div>';
+        if(mx) d.innerHTML += '<div class="mx">'+mx.wpm+' wpm, '+mx.fillers+' fillers, '+mx.pauses+' long pauses, loudness cv '+mx.loudness_cv+'</div>';
+        if(audioUrl){ const a=document.createElement('audio'); a.controls=true; a.src=audioUrl; d.appendChild(a); }
+        document.getElementById('log').appendChild(d); d.scrollIntoView({behavior:'smooth', block:'end'});
+      }
+      async function gatekeeperReply(){
+        try{
+          let out = await claude(systemPrompt(), turns.map(t=>({role:t.role, content:t.content})));
+          const routed = out.includes('<<ROUTED>>'), ended = out.includes('<<ENDED>>');
+          out = out.replace('<<ROUTED>>','').replace('<<ENDED>>','').trim();
+          turns.push({role:'assistant', content:out});
+          addTurn('gk', out);
+          $('status').textContent='your move';
+          speak(out);
+          if(routed){ $('winBanner').style.display='block'; sessionOn=false; $('talkBtn').disabled=true; }
+          if(ended){ $('loseBanner').style.display='block'; sessionOn=false; $('talkBtn').disabled=true; }
+        } catch(e){ $('status').textContent=e.message; }
+      }
+      $('startBtn').onclick = async ()=>{
+        if(!$('akey').value.trim()){ $('status').textContent='enter Anthropic key first'; return; }
+        turns=[]; sessionOn=true;
+        document.getElementById('log').innerHTML='';
+        $('coachOut').style.display='none';
+        $('winBanner').style.display='none'; $('loseBanner').style.display='none';
+        $('talkBtn').disabled=false; $('endBtn').disabled=false;
+        $('status').textContent='session live';
+        turns.push({role:'user', content:'[A visitor walks up to your desk.]'});
+        await gatekeeperReply();
+      };
+      $('talkBtn').onclick = ()=>{ if(!sessionOn) return;
+                                  if($('talkBtn').classList.contains('rec')) stopTalk(); else startTalk(); };
+      $('endBtn').onclick = async ()=>{
+        sessionOn=false; $('talkBtn').disabled=true;
+        $('status').textContent='coaching...';
+        const transcript = turns.filter(t=>t.content[0]!=='[').map(t=>
+          (t.role==='user'?'VISITOR: ':'RECEPTIONIST: ')+t.content+(t._mx?('\n  [voice: '+JSON.stringify(t._mx)+']'):'')).join('\n');
+        try{
+          const out = await claude(COACH, [{role:'user', content:'Scenario: '+SCENARIOS[+sSel.value][0]+', difficulty D'+$('diff').value+'\n\n'+transcript}], 700);
+          $('coachOut').textContent = out; $('coachOut').style.display='block';
+          $('coachOut').scrollIntoView({behavior:'smooth'});
+          $('status').textContent='done';
+        } catch(e){ $('status').textContent=e.message; }
+      };
+    </script>
+  </body>
+</html>html>
+
+    </script>
+  </script></summary></details></h2></code></label></label></div></h2></h1>
+      </header>
+  </body>
+  </style></title>
+  </head>
