@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Story Gym</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root { --bg:#16191C; --surface:#1E2327; --surface-2:#23282D; --ink:#E7E4DB; --muted:#9BA2A7; --line:#343B41; --accent:#C9A84C; --accent-strong:#DDBE66; --good:#6FBF97; --good-bg:#22322B; --warn:#D6906B; --warn-bg:#362823; --focus:#7FA8CE; }
+* { box-sizing: border-box; }
+body { background:var(--bg); color:var(--ink); font-family:"IBM Plex Sans",system-ui,sans-serif; font-size:15px; line-height:1.5; margin:0; }
+.wrap { max-width:900px; margin:0 auto; padding:0 16px 60px; }
+header { padding:30px 0 10px; border-bottom:2px solid var(--ink); margin-bottom:14px; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+h1 { font-family:"Spectral",Georgia,serif; font-size:30px; margin:0; }
+.sub { color:var(--muted); font-size:13px; }
+.sub a { color:var(--accent-strong); }
+h2 { font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent-strong); margin:22px 0 8px; }
+.panel { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin:12px 0; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px 14px; }
+label { display:block; font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+input[type=password], input[type=text], select { width:100%; background:var(--surface-2); color:var(--ink); border:1px solid var(--line); border-radius:5px; padding:8px 10px; font:inherit; font-size:13.5px; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline:2px solid var(--focus); outline-offset:1px; }
+button { font:inherit; cursor:pointer; border-radius:6px; border:1px solid var(--line); background:var(--surface-2); color:var(--ink); padding:9px 16px; }
+button:hover { border-color:var(--accent); }
+button.primary { background:var(--accent); color:#16191C; font-weight:600; border-color:var(--accent); }
+button:disabled { opacity:.45; cursor:default; }
+.row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+.hint { font-size:12px; color:var(--muted); margin-top:8px; }
+.status { font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--muted); min-height:18px; }
+.status.live { color:var(--good); }
+.status.her { color:var(--accent-strong); }
+#interim { color:var(--accent-strong); font-style:italic; min-height:20px; }
+#log { display:flex; flex-direction:column; gap:10px; margin:14px 0; }
+.turn { max-width:82%; padding:10px 14px; border-radius:10px; border:1px solid var(--line); }
+.turn.you { align-self:flex-end; background:var(--surface-2); }
+.turn.gk { align-self:flex-start; background:var(--surface); border-left:3px solid var(--accent); }
+.turn .who { font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:3px; }
+.turn .mx { font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--muted); margin-top:6px; }
+.turn audio { width:100%; height:28px; margin-top:6px; }
+#coachOut { white-space:pre-wrap; font-size:14px; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--good); border-radius:8px; padding:14px 16px; display:none; }
+details summary { cursor:pointer; color:var(--muted); font-size:13px; }
+.pulse { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--good); margin-right:6px; animation:pulse 1.2s infinite; vertical-align:middle; }
+@keyframes pulse { 0%{opacity:.3} 50%{opacity:1} 100%{opacity:.3} }
+@media (prefers-reduced-motion: reduce){ .pulse{animation:none} }
+.meterwrap { display:flex; align-items:center; gap:10px; margin-top:12px; }
+.meterlabel { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+.meter { flex:1; height:10px; background:var(--surface-2); border:1px solid var(--line); border-radius:5px; overflow:hidden; }
+.meter i { display:block; height:100%; width:50%; background:var(--accent); border-radius:5px; transition:width .6s ease, background .6s ease; }
+#timer { font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--accent-strong); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<h1>Story Gym</h1>
+<span class="sub">tell it fast, make it land, survive the tangents &middot; <a href="index.html">Gatekeeper Gym</a></span>
+</header>
+<div class="panel">
+<h2>Setup (stored locally in this browser only)</h2>
+<div class="grid">
+<div><label>Anthropic API key</label><input type="password" id="akey" placeholder="sk-ant-..."></div>
+<div><label>ElevenLabs API key</label><input type="password" id="ekey" placeholder="xi-..."></div>
+<div><label>Their voice</label><select id="voice"><option value="">(click Load voices)</option></select></div>
+<div><label>Who you are talking to</label><select id="role"></select></div>
+<div><label>Time budget</label>
+<select id="mode">
+<option value="2">Elevator - 2 minutes</option>
+<option value="5" selected>Coffee chat - 5 minutes</option>
+<option value="10">Long call - 10 minutes</option>
+</select></div>
+<div><label>Claude model</label><input type="text" id="model" value="claude-sonnet-5"></div>
+</div>
+<div class="row" style="margin-top:12px">
+<div style="flex:1;min-width:260px"><label>What are you practicing telling? (context for their questions)</label><input type="text" id="topic" value="My story: physicist from Poland building Cosmoflux, an automated materials lab going after industrial fields where research stopped decades ago"></div>
+</div>
+<div class="row">
+<button id="loadVoices">Load voices</button>
+<button id="saveKeys">Save keys</button>
+<span class="status" id="setupStatus"></span>
+</div>
+<p class="hint">Fully hands-free, same engine as the Gatekeeper Gym: a ~1.4 s pause ends your turn, they answer out loud, the mic re-opens when they finish. They will drift into tangents, share their own stories, and get visibly bored if you ramble or stay abstract; the engagement bar below is their honest attention, live. Keys stay in your browser.</p>
+</div>
+<div class="panel">
+<h2>The call</h2>
+<div class="row">
+<button id="startBtn" class="primary">Start call</button>
+<button id="endBtn" disabled>End + coach me</button>
+<span id="timer"></span>
+<span class="status" id="status">idle</span>
+</div>
+<div class="meterwrap"><span class="meterlabel">their engagement</span><div class="meter"><i id="meterFill"></i></div><span class="meterlabel" id="meterNum">5/10</span></div>
+<div id="interim"></div>
+<div id="log"></div>
+<div id="coachOut"></div>
+</div>
+<details><summary>What gets measured</summary>
+<p class="hint">Your turns are recorded (replayable) and measured locally: wpm, filler words, long pauses, loudness steadiness, and turn length (monologues over ~45 s get flagged). Their hidden engagement score after each reply drives the bar and goes to the coach as a trajectory, so the report can point at the exact moment you lost or won them.</p>
+</details>
+</div>
+<script>
+var ROLES = [
+["Deep-tech founder (peer)", "a fellow deep-tech founder you just met at a founder retreat. You build fusion diagnostics hardware. You love war stories, you interrupt with your own experiences, and you respect people who are concrete about what they actually did.", "your own hardware war stories, fundraising gossip, opinions about accelerators"],
+["VC partner", "a venture partner at a European deep-tech fund squeezing this call between two board meetings. You are sharp, friendly, and time-poor; you want the so-what in the first minute and you drift to market size and defensibility.", "market size doubts, a portfolio company anecdote, checking the time"],
+["Corporate R&D director", "an R&D director at a large industrial company. Technically deep, skeptical of startup polish, warm to people who know real engineering detail. You probe feasibility and ask what has actually been measured.", "internal politics anecdotes, why most startup pitches to you fail, standards and qualification"],
+["Smart generalist at dinner", "a curious, intelligent person seated next to the speaker at a dinner; background in economics, reads widely, knows no materials science. You need things explained vividly without jargon, and you wander to adjacent topics you find interesting.", "something you read recently, a question about AI, food and travel small talk"],
+["Fellow physicist", "a physicist friend-of-a-friend. You nerd-snipe: you grab any technical thread and pull it into the weeds, happily derailing the story into mechanism details. You respect clean explanations and honest uncertainty.", "mechanism rabbit holes, measurement techniques, complaints about academia"]
+];
+var rSel = document.getElementById('role');
+ROLES.forEach(function(r,i){ var o=document.createElement('option'); o.value=i; o.textContent=r[0]; rSel.appendChild(o); });
+var $ = function(id){ return document.getElementById(id); };
+var turns=[], sessionOn=false, herTurn=false, eTrail=[], deadline=0, clockTimer=null;
+try {
+$('akey').value = localStorage.getItem('gk_akey')||'';
+$('ekey').value = localStorage.getItem('gk_ekey')||'';
+var sv = localStorage.getItem('gk_voice');
+if(sv){ var o=document.createElement('option'); o.value=sv.split('|')[0]; o.textContent=sv.split('|')[1]||'saved voice'; o.selected=true; $('voice').appendChild(o); }
+} catch(e){}
+$('saveKeys').onclick = function(){ try{
+localStorage.setItem('gk_akey', $('akey').value.trim());
+localStorage.setItem('gk_ekey', $('ekey').value.trim());
+var sel=$('voice'); if(sel.value) localStorage.setItem('gk_voice', sel.value+'|'+sel.options[sel.selectedIndex].textContent);
+$('setupStatus').textContent='saved';
+}catch(e){ $('setupStatus').textContent='could not save (private window?)'; } };
+$('loadVoices').onclick = async function(){
+var k = $('ekey').value.trim();
+if(!k){ $('setupStatus').textContent='enter ElevenLabs key first'; return; }
+$('setupStatus').textContent='loading voices...';
+try {
+var r = await fetch('https://api.elevenlabs.io/v1/voices', {headers:{'xi-api-key':k}});
+var j = await r.json();
+var sel = $('voice'); sel.innerHTML='';
+(j.voices||[]).forEach(function(v){ var o=document.createElement('option'); o.value=v.voice_id; o.textContent=v.name; sel.appendChild(o); });
+$('setupStatus').textContent=(j.voices||[]).length+' voices loaded';
+} catch(e){ $('setupStatus').textContent='voice load failed: '+e.message; }
+};
+async function speak(text){
+var k = $('ekey').value.trim(), vid = $('voice').value;
+if(k && vid){
+try {
+var r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/'+vid+'?output_format=mp3_44100_128', {
+method:'POST',
+headers:{'xi-api-key':k, 'Content-Type':'application/json'},
+body: JSON.stringify({ text:text, model_id:'eleven_flash_v2_5', voice_settings:{stability:0.45, similarity_boost:0.8, style:0.35} })
+});
+if(!r.ok) throw new Error('TTS '+r.status);
+var blob = await r.blob();
+var a = new Audio(URL.createObjectURL(blob));
+await a.play();
+await new Promise(function(res){ a.onended=res; a.onerror=res; });
+return;
+} catch(e){ console.warn('ElevenLabs failed, falling back', e); }
+}
+await new Promise(function(res){
+var u = new SpeechSynthesisUtterance(text); u.lang='en-GB'; u.rate=1.05;
+u.onend=res; u.onerror=res; speechSynthesis.speak(u);
+});
+}
+function systemPrompt(){
+var role = ROLES[+rSel.value]; var mins = +$('mode').value;
+return 'You role-play '+role[1]+' You are talking with someone practicing how they tell their story. Their practice context: "'+$('topic').value+'".\n\nBehavior rules:\n- Speak 1-3 natural sentences per turn, spoken register, never narrate, never break character, never coach.\n- You are genuinely curious and technically knowledgeable. Ask short, real follow-up questions, one at a time.\n- Reward concrete, vivid, fast storytelling (specific numbers, scenes, decisions, surprises) with visibly deeper engagement. When the speaker rambles, stays abstract, buries the point, or monologues, become measurably less engaged: shorter replies, polite distraction.\n- Every 2-4 turns do something real humans do: drift into a tangent of your own (themes for you: '+role[2]+'), share your own related story, half-change the subject, or glance at the time. Make the speaker steer back; notice and reward graceful steering without ever mentioning it.\n- The total conversation window is about '+mins+' minutes; behave accordingly (in short windows, get impatient sooner).\n- End EVERY reply with the hidden token [E:n] where n is 0-10, your honest current engagement. Start around 5. Be strict: 8+ only when genuinely hooked.';
+}
+var COACH = 'You are a blunt, expert storytelling coach for founders. You get a transcript of a practice conversation (SPEAKER practicing their story with a curious, technical interlocutor), per-turn voice metrics for the speaker (wpm, fillers, pauses, loudness_cv, dur_s), and the interlocutor\'s hidden engagement trajectory (0-10 after each of their replies).\nGive:\n1. VERDICT: one sentence. Would this person remember the speaker in a week, and why.\n2. TIME TO HOOK: how many turns/seconds until the first genuinely memorable thing, quote that line; if it never came, say so.\n3. THE ENGAGEMENT STORY: read the trajectory, name the exact speaker line where attention rose most and where it dropped most.\n4. SCORES 1-5, one line each: hook speed / concreteness (numbers, scenes, names vs abstractions) / structure (setup, tension, resolution) / tailoring to this listener / tangent handling (returning gracefully without being rude) / brevity balance (rambling vs empty-terse).\n5. THE RETELL: rewrite the speaker\'s core story the way it should be told to THIS listener, max 120 words, using only facts the speaker actually said.\n6. VOICE: 2-3 sentences on delivery referencing the actual metrics.\n7. ONE DRILL for next round, one sentence.\nBe direct, no praise padding, under 400 words.';
+async function claude(system, messages, maxTok){
+var r = await fetch('https://api.anthropic.com/v1/messages', {
+method:'POST',
+headers:{
+'x-api-key': $('akey').value.trim(),
+'anthropic-version':'2023-06-01',
+'anthropic-dangerous-direct-browser-access':'true',
+'content-type':'application/json'
+},
+body: JSON.stringify({ model: $('model').value.trim(), max_tokens: maxTok||250, system:system, messages:messages })
+});
+if(!r.ok){ throw new Error('Claude API '+r.status+': '+await r.text()); }
+var j = await r.json();
+return j.content.map(function(c){return c.text||'';}).join('');
+}
+var stream=null, actx=null, analyser=null, abuf=null;
+var rec=null, srRunning=false, turnActive=false, silenceTimer=null, rmsTimer=null;
+var mediaRec=null, chunks=[], rmsSamples=[], tStart=0, finalText='', lastInterim='';
+async function ensureMic(){
+if(stream) return true;
+try { stream = await navigator.mediaDevices.getUserMedia({audio:true}); }
+catch(e){ $('status').textContent='mic blocked: use the hosted page or localhost'; return false; }
+actx = new (window.AudioContext||window.webkitAudioContext)();
+var src = actx.createMediaStreamSource(stream);
+analyser = actx.createAnalyser(); analyser.fftSize=2048; src.connect(analyser);
+abuf = new Float32Array(analyser.fftSize);
+return true;
+}
+function sampleRms(){
+analyser.getFloatTimeDomainData(abuf);
+var s=0; for(var i=0;i<abuf.length;i++) s+=abuf[i]*abuf[i];
+rmsSamples.push(Math.sqrt(s/abuf.length));
+}
+function beginTurn(){
+turnActive=true; chunks=[]; rmsSamples=[]; tStart=Date.now();
+try { mediaRec = new MediaRecorder(stream); mediaRec.ondataavailable=function(e){chunks.push(e.data);}; mediaRec.start(); } catch(e){ mediaRec=null; }
+rmsTimer = setInterval(sampleRms, 100);
+}
+function resetSilence(){
+clearTimeout(silenceTimer);
+silenceTimer = setTimeout(endTurn, 1400);
+}
+function startListening(){
+if(!sessionOn || herTurn) return;
+var SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SR){ $('status').textContent='SpeechRecognition unsupported: use Chrome'; return; }
+finalText=''; lastInterim='';
+rec = new SR(); rec.lang='en-US'; rec.continuous=true; rec.interimResults=true;
+rec.onresult = function(e){
+if(!turnActive) beginTurn();
+var interim='';
+for(var i=e.resultIndex;i<e.results.length;i++){
+if(e.results[i].isFinal) finalText += e.results[i][0].transcript + ' ';
+else interim += e.results[i][0].transcript;
+}
+lastInterim = interim;
+$('interim').textContent = finalText + interim;
+resetSilence();
+};
+rec.onerror = function(e){ if(e.error!=='no-speech') console.warn('speech error', e.error); };
+rec.onend = function(){ if(srRunning && sessionOn && !herTurn && !turnActive){ try{ rec.start(); }catch(e){} } };
+srRunning=true;
+try { rec.start(); } catch(e){}
+var st=$('status'); st.innerHTML='<span class="pulse"></span>listening... just talk'; st.className='status live';
+}
+function stopListening(){
+srRunning=false;
+clearTimeout(silenceTimer);
+try{ rec && rec.stop(); }catch(e){}
+}
+function computeMetrics(text, durS){
+var words = text.trim().split(/\s+/).filter(Boolean).length;
+var wpm = durS>0 ? Math.round(words/(durS/60)) : 0;
+var fillers = (text.toLowerCase().match(/\b(um+|uh+|erm|like|you know|sort of|kind of|basically|actually)\b/g)||[]).length;
+var speech = rmsSamples.filter(function(v){return v>0.01;});
+var mean = speech.length? speech.reduce(function(a,b){return a+b;},0)/speech.length : 0;
+var sd = 0;
+if(speech.length){ var acc=0; speech.forEach(function(v){acc+=(v-mean)*(v-mean);}); sd=Math.sqrt(acc/speech.length); }
+var cv = mean>0 ? +(sd/mean).toFixed(2) : 0;
+var pauses=0, run=0;
+rmsSamples.forEach(function(v){ if(v<=0.01){run++;} else { if(run>=7) pauses++; run=0; } });
+return { wpm:wpm, fillers:fillers, pauses:pauses, loudness_cv:cv, dur_s:+durS.toFixed(1) };
+}
+async function endTurn(){
+if(!turnActive) return;
+turnActive=false;
+stopListening();
+clearInterval(rmsTimer);
+var durS = (Date.now()-tStart)/1000;
+if(mediaRec && mediaRec.state!=='inactive'){
+await new Promise(function(res){ mediaRec.onstop=res; mediaRec.stop(); });
+}
+await new Promise(function(r){ setTimeout(r,250); });
+var text = (finalText + ' ' + lastInterim).trim();
+finalText=''; lastInterim='';
+$('interim').textContent='';
+if(!text){ startListening(); return; }
+var metrics = computeMetrics(text, durS);
+var audioUrl = chunks.length? URL.createObjectURL(new Blob(chunks,{type:'audio/webm'})) : null;
+addTurn('you', text, metrics, audioUrl);
+turns.push({role:'user', content:text, _mx:metrics});
+await interlocutorReply();
+}
+function addTurn(who, text, mx, audioUrl){
+var d = document.createElement('div'); d.className='turn '+(who==='you'?'you':'gk');
+d.innerHTML = '<div class="who">'+(who==='you'?'YOU':'THEM')+'</div><div>'+text.replace(/</g,'&lt;')+'</div>';
+if(mx){ var flag = mx.dur_s>45 ? ', MONOLOGUE '+mx.dur_s+'s' : ''; d.innerHTML += '<div class="mx">'+mx.wpm+' wpm, '+mx.fillers+' fillers, '+mx.pauses+' long pauses, loudness cv '+mx.loudness_cv+flag+'</div>'; }
+if(audioUrl){ var a=document.createElement('audio'); a.controls=true; a.src=audioUrl; d.appendChild(a); }
+$('log').appendChild(d); d.scrollIntoView({behavior:'smooth', block:'end'});
+}
+function setMeter(n){
+var f=$('meterFill'); f.style.width=(n*10)+'%';
+f.style.background = n>=7 ? 'var(--good)' : (n<=3 ? 'var(--warn)' : 'var(--accent)');
+$('meterNum').textContent = n+'/10';
+}
+async function interlocutorReply(){
+try{
+herTurn=true;
+var st=$('status'); st.textContent='...'; st.className='status her';
+var out = await claude(systemPrompt(), turns.map(function(t){return {role:t.role, content:t.content};}));
+var m = out.match(/\[E:(\d{1,2})\]/);
+var e = m ? Math.min(10, parseInt(m[1],10)) : null;
+out = out.replace(/\s*\[E:\d{1,2}\]\s*/g,'').trim();
+if(e!==null){ eTrail.push(e); setMeter(e); }
+turns.push({role:'assistant', content:out});
+addTurn('gk', out);
+st.textContent='they are speaking...'; st.className='status her';
+await speak(out);
+herTurn=false;
+if(sessionOn && Date.now()>deadline){ await finishSession('time'); return; }
+if(sessionOn) startListening();
+} catch(e){ herTurn=false; $('status').textContent=e.message; $('status').className='status'; }
+}
+function tickClock(){
+if(!sessionOn) return;
+var left = Math.max(0, deadline-Date.now());
+var mm = Math.floor(left/60000), ss = Math.floor((left%60000)/1000);
+$('timer').textContent = mm+':'+(ss<10?'0':'')+ss;
+if(left<=0 && !herTurn && !turnActive){ finishSession('time'); }
+}
+async function finishSession(reason){
+if(!sessionOn && reason!=='manual') { }
+sessionOn=false;
+clearInterval(clockTimer);
+$('timer').textContent = reason==='time' ? 'time up' : '';
+stopListening();
+$('endBtn').disabled=true;
+$('startBtn').disabled=false;
+await coach();
+}
+async function coach(){
+var st=$('status'); st.textContent='coaching...'; st.className='status';
+var transcript = turns.filter(function(t){return t.content[0]!=='[';}).map(function(t){
+return (t.role==='user'?'SPEAKER: ':'INTERLOCUTOR: ')+t.content+(t._mx?('\n [voice: '+JSON.stringify(t._mx)+']'):'');
+}).join('\n');
+try{
+var out = await claude(COACH, [{role:'user', content:'Interlocutor role: '+ROLES[+rSel.value][0]+', time budget '+$('mode').value+' min, practice topic: '+$('topic').value+'\nEngagement trajectory after each interlocutor reply: ['+eTrail.join(', ')+']\n\n'+transcript}], 900);
+$('coachOut').textContent = out; $('coachOut').style.display='block';
+$('coachOut').scrollIntoView({behavior:'smooth'});
+st.textContent='done';
+} catch(e){ st.textContent=e.message; }
+}
+$('startBtn').onclick = async function(){
+if(!$('akey').value.trim()){ $('status').textContent='enter Anthropic key first'; return; }
+if(!await ensureMic()) return;
+turns=[]; eTrail=[]; sessionOn=true; herTurn=false; setMeter(5);
+$('log').innerHTML='';
+$('coachOut').style.display='none';
+$('startBtn').disabled=true; $('endBtn').disabled=false;
+deadline = Date.now() + (+$('mode').value)*60000;
+clearInterval(clockTimer); clockTimer=setInterval(tickClock, 1000); tickClock();
+turns.push({role:'user', content:'[The conversation begins. Greet the speaker naturally and open with light curiosity about what they do.]'});
+await interlocutorReply();
+};
+$('endBtn').onclick = async function(){
+await finishSession('manual');
+};
+</script>
+</body>
+</html>
