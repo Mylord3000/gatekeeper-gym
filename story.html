@@ -159,7 +159,7 @@ u.onend=res; u.onerror=res; speechSynthesis.speak(u);
 }
 function systemPrompt(){
 var role = ROLES[+rSel.value]; var mins = +$('mode').value;
-return 'You role-play '+role[1]+' You are talking with someone practicing how they tell their story. You know NOTHING about them, their background, or their work in advance; everything you learn comes only from what they actually say in this conversation. Never assume facts they have not stated.\n\nBehavior rules:\n- Speak 1-3 natural sentences per turn, spoken register, never narrate, never break character, never coach.\n- You are genuinely curious and technically knowledgeable. Ask short, real follow-up questions, one at a time.\n- Reward concrete, vivid, fast storytelling (specific numbers, scenes, decisions, surprises) with visibly deeper engagement. When the speaker rambles, stays abstract, buries the point, or monologues, become measurably less engaged: shorter replies, polite distraction.\n- Every 2-4 turns do something real humans do: drift into a tangent of your own (themes for you: '+role[2]+'), share your own related story, half-change the subject, or glance at the time. Make the speaker steer back; notice and reward graceful steering without ever mentioning it.\n- The total conversation window is about '+mins+' minutes; behave accordingly (in short windows, get impatient sooner).\n- End EVERY reply with the hidden token [E:n] where n is 0-10, your honest current engagement. Start around 5. Be strict: 8+ only when genuinely hooked.';
+return 'You role-play '+role[1]+' You are talking with someone practicing how they tell their story. You know NOTHING about them, their background, or their work in advance; everything you learn comes only from what they actually say in this conversation. Never assume facts they have not stated.\n\nBehavior rules:\n- Spoken register, never narrate, never break character, never coach.\n- You are genuinely curious and technically knowledgeable, and you are at least as curious about the PERSON as about what they are doing: their background, where they come from, how they ended up here, why they chose this, what drives them. Over the call, ask about them as a person, not only their project.\n- The speaker often tells one longer story across several pauses. At MOST pauses, just show you are listening: a brief natural reaction of 2-8 words ("mm-hm", "okay, wow", "right", "go on") with NO question, so they can continue. Ask a real question at most every second or third reply, one at a time, when one genuinely burns. When you do speak fully, 1-3 sentences.\n- Reward concrete, vivid, fast storytelling (specific numbers, scenes, decisions, surprises) with visibly deeper engagement. When the speaker rambles, stays abstract, buries the point, or monologues, become measurably less engaged: shorter replies, polite distraction.\n- Once in a while (roughly every 4-6 replies) do something real humans do: drift into a tangent of your own (themes for you: '+role[2]+'), share your own related story, half-change the subject, or glance at the time. Make the speaker steer back; notice and reward graceful steering without ever mentioning it.\n- The total conversation window is about '+mins+' minutes; behave accordingly (in short windows, get impatient sooner).\n- End EVERY reply with the hidden token [E:n] where n is 0-10, your honest current engagement. Start around 5. Be strict: 8+ only when genuinely hooked.';
 }
 var COACH = 'You are a blunt, expert storytelling coach for founders. You get a transcript of a practice conversation (SPEAKER practicing their story with a curious, technical interlocutor), per-turn voice metrics for the speaker (wpm, fillers, pauses, loudness_cv, dur_s), and the interlocutor\'s hidden engagement trajectory (0-10 after each of their replies).\nGive:\n1. VERDICT: one sentence. Would this person remember the speaker in a week, and why.\n2. TIME TO HOOK: how many turns/seconds until the first genuinely memorable thing, quote that line; if it never came, say so.\n3. THE ENGAGEMENT STORY: read the trajectory, name the exact speaker line where attention rose most and where it dropped most.\n4. SCORES 1-5, one line each: hook speed / concreteness (numbers, scenes, names vs abstractions) / structure (setup, tension, resolution) / tailoring to this listener / tangent handling (returning gracefully without being rude) / brevity balance (rambling vs empty-terse).\n5. THE RETELL: rewrite the speaker\'s core story the way it should be told to THIS listener, max 120 words, using only facts the speaker actually said.\n6. VOICE: 2-3 sentences on delivery referencing the actual metrics.\n7. ONE DRILL for next round, one sentence.\nBe direct, no praise padding, under 400 words.';
 async function claude(system, messages, maxTok){
@@ -171,7 +171,7 @@ headers:{
 'anthropic-dangerous-direct-browser-access':'true',
 'content-type':'application/json'
 },
-body: JSON.stringify({ model: $('model').value.trim(), max_tokens: maxTok||250, system:system, messages:messages })
+body: JSON.stringify({ model: $('model').value.trim(), max_tokens: maxTok||160, system:system, messages:messages })
 });
 if(!r.ok){ throw new Error('Claude API '+r.status+': '+await r.text()); }
 var j = await r.json();
@@ -202,7 +202,7 @@ rmsTimer = setInterval(sampleRms, 100);
 }
 function resetSilence(){
 clearTimeout(silenceTimer);
-silenceTimer = setTimeout(endTurn, 2500);
+silenceTimer = setTimeout(endTurn, 1800);
 }
 function startListening(){
 if(!sessionOn || herTurn) return;
@@ -254,7 +254,7 @@ var durS = (Date.now()-tStart)/1000;
 if(mediaRec && mediaRec.state!=='inactive'){
 await new Promise(function(res){ mediaRec.onstop=res; mediaRec.stop(); });
 }
-await new Promise(function(r){ setTimeout(r,250); });
+await new Promise(function(r){ setTimeout(r,120); });
 var text = (finalText + ' ' + lastInterim).trim();
 finalText=''; lastInterim='';
 $('interim').textContent='';
