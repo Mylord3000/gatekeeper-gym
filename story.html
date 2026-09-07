@@ -79,13 +79,13 @@ details summary { cursor:pointer; color:var(--muted); font-size:13px; }
 <button id="saveKeys">Save keys</button>
 <span class="status" id="setupStatus"></span>
 </div>
-<p class="hint">Fully hands-free, same engine as the Gatekeeper Gym: a ~1.4 s pause ends your turn, they answer out loud, the mic re-opens when they finish. They will drift into tangents, share their own stories, and get visibly bored if you ramble or stay abstract; the engagement bar below is their honest attention, live. Keys stay in your browser.</p>
 </div>
 <div class="panel">
 <h2>The call</h2>
 <div class="row">
 <button id="startBtn" class="primary">Start call</button>
-<button id="endBtn" disabled>End + coach me</button>
+<button id="endBtn" disabled>End call</button>
+<button id="coachBtn" disabled>Coach me</button>
 <span id="timer"></span>
 <span class="status" id="status">idle</span>
 </div>
@@ -122,16 +122,20 @@ localStorage.setItem('gk_ekey', $('ekey').value.trim());
 var sel=$('voice'); if(sel.value) localStorage.setItem('gk_voice', sel.value+'|'+sel.options[sel.selectedIndex].textContent);
 $('setupStatus').textContent='saved';
 }catch(e){ $('setupStatus').textContent='could not save (private window?)'; } };
+function saveVoiceChoice(){ var sel=$('voice'); if(sel.value){ try{ localStorage.setItem('gk_voice', sel.value+'|'+sel.options[sel.selectedIndex].textContent); }catch(e){} } }
+$('voice').onchange = function(){ saveVoiceChoice(); $('setupStatus').textContent='voice saved'; };
 $('loadVoices').onclick = async function(){
 var k = $('ekey').value.trim();
 if(!k){ $('setupStatus').textContent='enter ElevenLabs key first'; return; }
 $('setupStatus').textContent='loading voices...';
 try {
-var r = await fetch('https://api.elevenlabs.io/v1/voices', {headers:{'xi-api-key':k}});
+var r = await fetch('https://api.elevenlabs.io/v1/voices?page_size=100', {headers:{'xi-api-key':k}});
+if(!r.ok){ var msg=String(r.status); try{ var ej=await r.json(); if(ej.detail) msg=(ej.detail.message||ej.detail.status||msg); }catch(_e){} throw new Error(msg+(r.status===401?' (bad key?)':'')); }
 var j = await r.json();
 var sel = $('voice'); sel.innerHTML='';
-(j.voices||[]).forEach(function(v){ var o=document.createElement('option'); o.value=v.voice_id; o.textContent=v.name; sel.appendChild(o); });
-$('setupStatus').textContent=(j.voices||[]).length+' voices loaded';
+(j.voices||[]).sort(function(x,y){ return x.name.localeCompare(y.name); }).forEach(function(v){ var o=document.createElement('option'); o.value=v.voice_id; o.textContent=v.name+(v.category?' ('+v.category+')':''); sel.appendChild(o); });
+if(!sel.options.length){ $('setupStatus').textContent='key accepted but no voices on this account'; }
+else { sel.selectedIndex=0; saveVoiceChoice(); $('setupStatus').textContent=sel.options.length+' voices loaded - pick one, it saves itself'; }
 } catch(e){ $('setupStatus').textContent='voice load failed: '+e.message; }
 };
 async function speak(text){
@@ -309,7 +313,9 @@ $('timer').textContent = reason==='time' ? 'time up' : '';
 stopListening();
 $('endBtn').disabled=true;
 $('startBtn').disabled=false;
-await coach();
+$('coachBtn').disabled = turns.length<2;
+var st=$('status'); st.className='status';
+st.textContent = turns.length<2 ? 'idle' : (reason==='time' ? 'time up - press Coach me for the verdict' : 'call ended - press Coach me for the verdict');
 }
 async function coach(){
 var st=$('status'); st.textContent='coaching...'; st.className='status';
@@ -329,7 +335,8 @@ if(!await ensureMic()) return;
 turns=[]; eTrail=[]; sessionOn=true; herTurn=false; setMeter(5);
 $('log').innerHTML='';
 $('coachOut').style.display='none';
-$('startBtn').disabled=true; $('endBtn').disabled=false;
+$('startBtn').disabled=true; $('endBtn').disabled=false; $('coachBtn').disabled=true;
+var note=document.createElement('div'); note.className='hint'; note.textContent='Context loaded: '+ROLES[+rSel.value][0]+' / '+$('mode').value+' min / "'+$('topic').value+'"'; $('log').appendChild(note);
 deadline = Date.now() + (+$('mode').value)*60000;
 clearInterval(clockTimer); clockTimer=setInterval(tickClock, 1000); tickClock();
 turns.push({role:'user', content:'[The conversation begins. Greet the speaker naturally and open with light curiosity about what they do.]'});
@@ -338,6 +345,14 @@ await interlocutorReply();
 $('endBtn').onclick = async function(){
 await finishSession('manual');
 };
+$('coachBtn').onclick = async function(){
+$('coachBtn').disabled=true;
+await coach();
+};
+$('topic').addEventListener('change', function(){
+if(sessionOn){ var n=document.createElement('div'); n.className='hint'; n.textContent='Context updated (applies from their next reply): "'+this.value+'"'; $('log').appendChild(n); n.scrollIntoView({behavior:'smooth'}); }
+else { $('setupStatus').textContent='context will load when you press Start call'; }
+});
 </script>
 </body>
 </html>
